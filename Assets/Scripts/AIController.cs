@@ -205,7 +205,6 @@ public class AIController : MonoBehaviour
 
                 // Generate a random exploration point within the specified radius.
                 randomExplorationPoint = GetRandomExplorationPoint();
-                pointAlreadyVisited.Add(randomExplorationPoint);
 
                 // Set the AI's destination to the exploration point.
                 if (!pointAlreadyVisited.Contains(randomExplorationPoint))
@@ -213,6 +212,7 @@ public class AIController : MonoBehaviour
                     isMovingToExplorationPoint = true;
                     MoveTo(randomExplorationPoint);
                 }
+                pointAlreadyVisited.Add(randomExplorationPoint);
             }
         }
         else
