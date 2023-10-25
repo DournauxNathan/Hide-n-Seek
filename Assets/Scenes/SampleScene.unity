@@ -981,22 +981,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec5c078115a88c34d9e4af9c61a60b45, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  role: 0
   hidingSpots: []
   chaseSpeed: 5
-  fleeSpeed: 7
-  fleeDistance: 10
-  fleeLocations: []
+  visibleAgents: []
   seeker: {fileID: 676152757}
-  isSeeker: 0
-  roleSwitchTimer: 2.4597757
+  eyes: {fileID: 611119176}
   layerMask:
     serializedVersion: 2
     m_Bits: 64
-  eyes: {fileID: 611119176}
-  fov: 79
-  viewDistance: 7
-  visibleAgents: []
-  pointAlreadyVisited: []
+  viewAngle: 90
+  viewDistance: 5
 --- !u!195 &433464084
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -1484,22 +1479,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec5c078115a88c34d9e4af9c61a60b45, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  role: 1
   hidingSpots: []
   chaseSpeed: 5
-  fleeSpeed: 7
-  fleeDistance: 10
-  fleeLocations: []
+  visibleAgents: []
   seeker: {fileID: 0}
-  isSeeker: 0
-  roleSwitchTimer: 2.4597757
+  eyes: {fileID: 1931225973}
   layerMask:
     serializedVersion: 2
     m_Bits: 64
-  eyes: {fileID: 1931225973}
-  fov: 106
+  viewAngle: 0
   viewDistance: 8
-  visibleAgents: []
-  pointAlreadyVisited: []
 --- !u!195 &676152761
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -4106,22 +4096,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec5c078115a88c34d9e4af9c61a60b45, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  role: 0
   hidingSpots: []
   chaseSpeed: 5
-  fleeSpeed: 7
-  fleeDistance: 10
-  fleeLocations: []
+  visibleAgents: []
   seeker: {fileID: 0}
-  isSeeker: 1
-  roleSwitchTimer: 10
+  eyes: {fileID: 0}
   layerMask:
     serializedVersion: 2
     m_Bits: 0
-  eyes: {fileID: 0}
-  fov: 0
+  viewAngle: 0
   viewDistance: 0
-  visibleAgents: []
-  pointAlreadyVisited: []
 --- !u!195 &1917678683
 NavMeshAgent:
   m_ObjectHideFlags: 0
