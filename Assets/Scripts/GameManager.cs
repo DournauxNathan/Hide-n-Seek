@@ -8,6 +8,9 @@ public class GameManager : MonoBehaviour
     public float gameDuration = 300.0f; // Set the game duration in seconds.
     public float hidingTime = 300.0f; // Set the game duration in seconds.
     public AIController hider; // Reference to the Hider AI.
+    public AIController seeker; // Reference to the Seeker AI.
+
+    public bool isGameOn = false;
 
     private float gameTimer;
     private float timer;
@@ -40,11 +43,11 @@ public class GameManager : MonoBehaviour
         else if (timer <= 0 && gameTimer > 0)
         {
             isLookingForHidingSpots = false; //To Update it AIControlelr
-
+            isGameOn = true;
             gameTimer -= Time.deltaTime;
             // Implement game logic during the main game duration.
             Debug.Log("Seeker, Find the Hider !");
-
+            
         }
         else
         {

@@ -6,6 +6,8 @@ TagManager:
   tags:
   - AI
   - HidingSpot
+  - Hider
+  - Seeker
   layers:
   - Default
   - TransparentFX
@@ -14,8 +16,8 @@ TagManager:
   - Water
   - UI
   - Detectable
-  - 
-  - 
+  - Hider
+  - Seeker
   - 
   - 
   - 

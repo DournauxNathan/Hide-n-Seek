@@ -45,7 +45,14 @@ public class AIController : MonoBehaviour
     public float chaseSpeed = 5f; // Speed at which the AI chases other agents.
     private Transform currentTarget; // The currently detected agent to chase.
     [SerializeField] private List<Transform> visibleAgents = new List<Transform>();
-    
+    public float seekRotationSpeed = 60f; // Adjust rotation speed as needed.
+    public float seekRotationDuration = 2.0f; // Adjust rotation duration as needed.
+
+    private bool isSeeking = false;
+    private float rotationTimer = 0f;
+    private Vector3 initialRotation;
+
+
     [Space(10)]
     [Header("HIDER")]
     public Transform seeker; // Reference to
@@ -73,54 +80,31 @@ public class AIController : MonoBehaviour
         timeLeftToLook = GameManager.instance.hidingTime;
     }
 
+
+
     // Update is called once per frame
     private void Update()
     {
-        /*if (role == Role.Seeker && visibleAgents.Count != 0)
+        if (role == Role.Seeker && GameManager.instance.isGameOn)
         {
-            // Implement seeker behavior here.
-            // Check if it's time to choose a new random destination.
-            if (Time.time >= nextMoveTime)
+            if (!isSeeking)
             {
-                SetRandomDestination();
-            }
-
-            // Move towards the random destination.
-            MoveToRandomDestination();
-        }
-
-        DetectOtherAI();
-
-        if (visibleAgents.Count > 0)
-        {
-            currentTarget = visibleAgents[0];
-
-            if (isSeeker)
-            {
-                ChaseTarget();
-                // Draw a line using the LineRenderer from the AI's position to the detected agent.// Draw a line using the LineRenderer from the AI's position to the detected agent.
-                m_LineRenderer.enabled = true;
-                m_LineRenderer.SetPosition(0, transform.position);
-                m_LineRenderer.SetPosition(1, visibleAgents[0].position + new Vector3(0, 1.5f, 0)); // You can update this for multiple detected agents.
-
+                // Start seeking by looking around.
+                isSeeking = true;
             }
             else
             {
-                //FleeFromSeeker();
+                LookForHidingSpots();
+
+                // Implement detection logic during rotation.
+                DetectHider();
             }
         }
-        else
-        {
-            // Draw a line using the LineRenderer from the AI's position to the detected agent.
-            m_LineRenderer.enabled = false;
-            currentTarget = null;
-        }*/
-
     }
 
     #region Move
 
-    private float explorationRadius = 10.0f; // Maximum distance for exploration.
+    private float explorationRadius = 30.0f; // Maximum distance for exploration.
     
     public void MoveTo(Vector3 position)
     {
@@ -153,33 +137,7 @@ public class AIController : MonoBehaviour
     #endregion
 
     #region Detection
-    private void DetectOtherAI()
-    {
-        visibleAgents.Clear();
-
-        Collider[] colliders = Physics.OverlapSphere(transform.position, viewDistance);
-
-        foreach (var collider in colliders)
-        {
-            if (collider.CompareTag("AI")) // Assuming AI agents have the "AI" tag.
-            {
-                Vector3 direction = collider.transform.position - transform.position;
-                float angle = Vector3.Angle(direction, transform.forward);
-
-                if (angle <= viewAngle / 2)
-                {
-                    RaycastHit hit;
-                    if (Physics.Raycast(transform.position, direction, out hit, viewDistance))
-                    {
-                        if (hit.collider.CompareTag("AI"))
-                        {
-                            visibleAgents.Add(hit.transform);
-                        }
-                    }
-                }
-            }
-        }
-    }
+   
     #endregion
 
     #region Hide Behaviour
@@ -192,9 +150,13 @@ public class AIController : MonoBehaviour
     private bool isMovingToExplorationPoint = false;
     private List<Vector3> pointAlreadyVisited = new List<Vector3>();
     
+  
     public void LookForHidingSpots()
     {
-        timeLeftToLook -= Time.deltaTime;
+        if (role == Role.Hider)
+        {
+            timeLeftToLook -= Time.deltaTime;
+        }
 
         if (isMovingAround)
         {
@@ -212,24 +174,28 @@ public class AIController : MonoBehaviour
                     isMovingToExplorationPoint = true;
                     MoveTo(randomExplorationPoint);
                 }
+
                 pointAlreadyVisited.Add(randomExplorationPoint);
             }
         }
         else
         {
             // If the AI has reached the exploration point, stop moving.
-            if (isMovingToExplorationPoint && m_NavMeshAgent.remainingDistance < 0.1f)
+            if (isMovingToExplorationPoint && m_NavMeshAgent.remainingDistance < 2f)
             {
                 isMovingToExplorationPoint = false;
                 isMovingAround = true; // Resume moving around after finding spots.
             }
 
-            #region Implement logic to find and add hiding spots during the lookForHidingSpotsDuration.
+            if (role == Role.Hider)
+            {
+                #region Implement logic to find and add hiding spots during the lookForHidingSpotsDuration.
 
             Collider[] targetsInViewRadius = Physics.OverlapSphere(transform.position, viewDistance, layerMask);
             foreach (Collider target in targetsInViewRadius)
             {
                 Vector3 directionToTarget = (target.transform.position - transform.position).normalized;
+
                 if (Vector3.Angle(transform.forward, directionToTarget) < viewAngle / 2)
                 {
                     // The target is within the AI's field of view
@@ -253,6 +219,7 @@ public class AIController : MonoBehaviour
                 }
             }
             #endregion
+            }
         }
 
         // If the timer is near the end, call MoveToFarthestHidingSpot.
@@ -287,8 +254,6 @@ public class AIController : MonoBehaviour
 
             if (farthestSpot != Vector3.zero)
             {
-                Debug.Log("Hiding spot reached !");
-
                 // Go to the farthest hiding spot.
                 MoveTo(farthestSpot);
             }
@@ -296,22 +261,96 @@ public class AIController : MonoBehaviour
     }
     #endregion
 
-    
-    #region Chase
-
-    private void ChaseTarget()
+    #region Seek
+    private void DetectHider()
     {
-        if (currentTarget != null)
+        Collider[] targetsInViewRadius = Physics.OverlapSphere(transform.position, viewDistance, layerMask);
+        foreach (Collider target in targetsInViewRadius)
         {
-            // Calculate the path to the detected agent.
-            m_NavMeshAgent.SetDestination(currentTarget.position);
+            currentTarget = target.transform;
+            Vector3 directionToTarget = (target.transform.position - transform.position).normalized;
 
-            // Set the AI's speed to the chase speed.
-            m_NavMeshAgent.speed = chaseSpeed;
+
+            if (Vector3.Angle(transform.forward, directionToTarget) < viewAngle / 2)
+            {
+                float angle = Vector3.Angle(directionToTarget, transform.forward);
+
+                RaycastHit hit;
+                if (Physics.Raycast(transform.position, directionToTarget, out hit, viewDistance))
+                {
+                    if (hit.collider.CompareTag("Hider"))
+                    {
+                        // Hider is detected. Implement the action you want the Seeker to take when a Hider is found.
+                        // Draw a line using the LineRenderer from the AI's position to the detected agent.// Draw a line using the LineRenderer from the AI's position to the detected agent.
+                        m_LineRenderer.enabled = true;
+                        m_LineRenderer.SetPosition(0, transform.position);
+                        m_LineRenderer.SetPosition(1, currentTarget.position + new Vector3(0, 1.5f, 0)); // You can update this for multiple detected agents.
+                                            
+                        // For example, you can stop seeking and start chasing the Hider.
+                        StopSeeking();
+                        Debug.Log("End");
+                        //ChaseHider(GetComponent<Collider>().transform);
+                    }
+                }
+                else
+                {
+                    m_LineRenderer.enabled = false;
+                }
+            }
+            else
+            {
+                m_LineRenderer.enabled = false;
+            }
         }
     }
+
+    private List<Vector3> exploredPositions = new List<Vector3>();
+
+    private void ExploreNewPosition()
+    {
+        if (exploredPositions.Count == 0)
+        {
+            // Initial exploration - add the current position.
+            exploredPositions.Add(transform.position);
+        }
+
+        // Choose a random exploration point that hasn't been explored yet.
+        Vector3 randomExplorationPoint;
+        int maxAttempts = 10; // Adjust this value as needed to avoid getting stuck.
+
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            randomExplorationPoint = GetRandomExplorationPoint();
+
+            // Check if the position is not in the list of explored positions.
+            if (!exploredPositions.Contains(randomExplorationPoint))
+            {
+                // Explore the new position.
+                exploredPositions.Add(randomExplorationPoint);
+
+                // Set the AI's destination to the exploration point.
+                MoveTo(randomExplorationPoint);
+
+                return; // Break out of the loop once a valid unexplored position is found.
+            }
+        }
+    }
+
+
+    private void StopSeeking()
+    {
+        isSeeking = false;
+    }
+
+    private void ChaseHider(Transform hiderTransform)
+    {
+        // Implement the logic to chase the Hider, e.g., set the destination and change AI behavior.
+        // You can use the NavMeshAgent and other methods you've defined for chasing.
+        // Calculate the path to the Hider's position
+        m_NavMeshAgent.SetDestination(hiderTransform.position);
+    }
     #endregion
-  
+
     public Vector3 DirFromAngle(float angleInDegrees, bool isGlobal)
     {
         if (!isGlobal)
