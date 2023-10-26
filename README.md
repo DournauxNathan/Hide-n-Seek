@@ -9,7 +9,7 @@ This repository contains the source code for an engaging Hide and Seek game. It 
 ### Key Components
 - AI Controller: Handles AI behavior, including movement, detection, and decision-making.
 - Field of View (FOV): Defines the AI's visual perception with a cone-shaped FOV.
-- 
+
 ## Features
 
 - **Hiding and Seeking:** The AI can take on two roles: Hider and Seeker. Customize AI behaviors for each role.
