@@ -19,11 +19,15 @@ public class FOVEditor : Editor
         Vector3 toPositionA = fromPosition + viewAngleA * fov.viewDistance;
 
         // Draw the filled cone to represent FOV
-        Handles.color = new Color(1f, 0f, 0f, 0.2f); // Red with transparency
+        Handles.color = new Color(1f, 0f, 0f, .5f); // Red with transparency
         Handles.DrawSolidArc(fromPosition, Vector3.up, viewAngleA, fov.viewAngle, fov.viewDistance);
 
         // Optionally, you can also draw a line to the endpoint for reference
         Handles.DrawLine(fromPosition, toPositionA);
+
+
+        Handles.color = Color.yellow;
+        Handles.DrawWireArc(fov.transform.position, Vector3.up, Vector3.forward, 360, fov.explorationRadius);
     }
 }
 
@@ -35,30 +39,22 @@ public enum Role
 
 public class AIController : MonoBehaviour
 {    
-    public Role role;
+    public Role role; 
 
-    public List<GameObject> hidingSpots;
+    [Header("MOVEMENT")]
+    public float speed = 3.5f;
+    [Tooltip("Maximum distance for exploration.")] public float explorationRadius = 20.0f;
 
-    [Space(10)]
-    [Header("SEEKER")] 
-    private LineRenderer m_LineRenderer; // The LineRenderer for FOV detection.
-    public float chaseSpeed = 5f; // Speed at which the AI chases other agents.
-    private Transform currentTarget; // The currently detected agent to chase.
-    [SerializeField] private List<Transform> visibleAgents = new List<Transform>();
-    public float seekRotationSpeed = 60f; // Adjust rotation speed as needed.
-    public float seekRotationDuration = 2.0f; // Adjust rotation duration as needed.
+    private float timeLeftToLook;
+    private float nextMoveTime;
+    private bool isMovingAround = true;
+    private bool isMovingToExplorationPoint = false;
+    private List<Vector3> pointAlreadyVisited = new List<Vector3>();
 
-    private bool isSeeking = false;
-    private float rotationTimer = 0f;
-    private Vector3 initialRotation;
+    [Header("REFERENCES")]
+    [Tooltip("The reference of the currently detected agent to chase")] [SerializeField] private Transform currentTarget;
+    [Tooltip("The reference of all the hiding spots found by an agent")] [SerializeField] private List<GameObject> hidingSpots; 
 
-
-    [Space(10)]
-    [Header("HIDER")]
-    public Transform seeker; // Reference to
-
-
-    [Space(10)]
     [Header("Field Of View Parameters")]
     public Transform eyes;
     public LayerMask layerMask;
@@ -66,59 +62,126 @@ public class AIController : MonoBehaviour
     [Range(0f, 360f)] public float viewAngle;
     public float viewDistance;
 
+    // Example usage to modify area costs dynamically.
+    DynamicNavMeshAreaModification areaModification;
     private NavMeshAgent m_NavMeshAgent;
+    private LineRenderer m_LineRenderer; // The LineRenderer when seeker detect a hider.
 
     // Start is called before the first frame update
     private void Start()
     {
+        // Find the DynamicNavMeshAreaModification script in the scene.
+        areaModification = FindObjectOfType<DynamicNavMeshAreaModification>();
+
+        if (role == Role.Seeker)
+        {
+            GameManager.instance.SubscribeSeekers(this);
+        }
+        else
+        {
+            GameManager.instance.SubscribeHiders(this);
+        }
+
+    
         m_LineRenderer = GetComponent<LineRenderer>();
         m_NavMeshAgent = GetComponent<NavMeshAgent>();
      
         m_LineRenderer.enabled = false; // Initially hide the LineRenderer.
 
-
         timeLeftToLook = GameManager.instance.hidingTime;
     }
-
-
 
     // Update is called once per frame
     private void Update()
     {
+        SetSpeed();
+
         if (role == Role.Seeker && GameManager.instance.isGameOn)
         {
-            if (!isSeeking)
-            {
-                // Start seeking by looking around.
-                isSeeking = true;
-            }
-            else
-            {
-                LookForHidingSpots();
+            LookAround();
+            DetectHider();
+        }
 
-                // Implement detection logic during rotation.
-                DetectHider();
+        if (role == Role.Hider)
+        {
+            timeLeftToLook -= Time.deltaTime;
+
+            DetectHidingSpots();
+
+            // If the timer is near the end, call MoveToFarthestHidingSpot.
+            if (timeLeftToLook <= GameManager.instance.hidingTime / 3)
+            {
+                isMovingAround = false;
+                isMovingToExplorationPoint = false;
+                timeLeftToLook = GameManager.instance.hidingTime;
+
+                MoveToFarthestHidingSpot();
             }
         }
     }
 
     #region Move
 
-    private float explorationRadius = 30.0f; // Maximum distance for exploration.
-    
+    public void SetSpeed()
+    {
+        m_NavMeshAgent.speed = speed;
+    }
+
+    public void LookAround()
+    {
+        if (isMovingAround)
+        {
+            // Check if it's time to stop moving around and start looking for hiding spots.
+            if (Time.time >= nextMoveTime)
+            {
+                isMovingAround = false;
+
+                //If there is no point already visited, Add the current position in the list
+                if (pointAlreadyVisited.Count == 0)
+                {
+                    // Initial exploration - add the current position.
+                    pointAlreadyVisited.Add(transform.position);
+                }
+
+                int maxAttempts = 20; // Adjust this value as needed to avoid getting stuck.
+
+                for (int i = 0; i < maxAttempts; i++)
+                {
+                    // Choose a random exploration point that hasn't been explored yet.
+                    Vector3 randomExplorationPoint = GetRandomExplorationPoint();
+
+                    // Check if the position is not in the list of explored positions.
+                    if (!pointAlreadyVisited.Contains(randomExplorationPoint))
+                    {
+                        // Explore the new position.
+                        pointAlreadyVisited.Add(randomExplorationPoint);
+
+                        isMovingToExplorationPoint = true;
+                        // Set the AI's destination to the exploration point.
+                        MoveTo(randomExplorationPoint);
+
+                        return; // Break out of the loop once a valid unexplored position is found.
+                    }
+                }
+
+            }
+        }
+        else
+        {     
+            // If the AI has reached the exploration point, stop moving.
+            if (isMovingToExplorationPoint && m_NavMeshAgent.remainingDistance < 5f)
+            {
+                isMovingToExplorationPoint = false;
+                isMovingAround = true; // Resume moving around after finding spots.
+            }
+        }
+    }
+
     public void MoveTo(Vector3 position)
     {
         m_NavMeshAgent.SetDestination(position);
     }
 
-    private Vector3 GetRandomExplorationPoint()
-    {
-        Vector3 randomDirection = Random.insideUnitSphere * explorationRadius;
-        randomDirection += transform.position;
-        NavMeshHit hit;
-        NavMesh.SamplePosition(randomDirection, out hit, explorationRadius, 1);
-        return hit.position;
-    }
     #endregion
 
     //To DO
@@ -137,137 +200,45 @@ public class AIController : MonoBehaviour
     #endregion
 
     #region Detection
-   
-    #endregion
 
-    #region Hide Behaviour
-
-    private float nextMoveTime;
-    private int foundHidingSpots = 0;
-    private float timeLeftToLook;
-    private bool isMovingAround = true;
-    private Vector3 randomExplorationPoint;
-    private bool isMovingToExplorationPoint = false;
-    private List<Vector3> pointAlreadyVisited = new List<Vector3>();
-    
-  
-    public void LookForHidingSpots()
+    private void DetectHidingSpots()
     {
-        if (role == Role.Hider)
+        Collider[] targetsInViewRadius = Physics.OverlapSphere(transform.position, viewDistance, layerMask);
+        foreach (Collider target in targetsInViewRadius)
         {
-            timeLeftToLook -= Time.deltaTime;
-        }
+            Vector3 directionToTarget = (target.transform.position - transform.position).normalized;
 
-        if (isMovingAround)
-        {
-            // Check if it's time to stop moving around and start looking for hiding spots.
-            if (Time.time >= nextMoveTime)
+            if (Vector3.Angle(transform.forward, directionToTarget) < viewAngle / 2)
             {
-                isMovingAround = false;
+                // The target is within the AI's field of view
+                float distanceToTarget = Vector3.Distance(transform.position, target.transform.position);
 
-                // Generate a random exploration point within the specified radius.
-                randomExplorationPoint = GetRandomExplorationPoint();
+                // You can add more conditions here to filter the targets, e.g., check if the target is visible, within a certain distance, etc.
 
-                // Set the AI's destination to the exploration point.
-                if (!pointAlreadyVisited.Contains(randomExplorationPoint))
+                // React to the target
+                // For example, you might want to follow or attack the target.
+
+                //If the Target is a Hiding Spot && if is position in not in the hiding list
+                if (target.CompareTag("HidingSpot") && !hidingSpots.Contains(target.gameObject))
                 {
-                    isMovingToExplorationPoint = true;
-                    MoveTo(randomExplorationPoint);
-                }
+                    Debug.Log(target.name);
 
-                pointAlreadyVisited.Add(randomExplorationPoint);
-            }
-        }
-        else
-        {
-            // If the AI has reached the exploration point, stop moving.
-            if (isMovingToExplorationPoint && m_NavMeshAgent.remainingDistance < 2f)
-            {
-                isMovingToExplorationPoint = false;
-                isMovingAround = true; // Resume moving around after finding spots.
-            }
+                    // You've found a hiding spot. Add it to your list of hiding spots.
+                    Transform hidingSpot = target.transform;
 
-            if (role == Role.Hider)
-            {
-                #region Implement logic to find and add hiding spots during the lookForHidingSpotsDuration.
+                    areaModification.ModifyAreaCost(1, 2.0f);
 
-            Collider[] targetsInViewRadius = Physics.OverlapSphere(transform.position, viewDistance, layerMask);
-            foreach (Collider target in targetsInViewRadius)
-            {
-                Vector3 directionToTarget = (target.transform.position - transform.position).normalized;
-
-                if (Vector3.Angle(transform.forward, directionToTarget) < viewAngle / 2)
-                {
-                    // The target is within the AI's field of view
-                    float distanceToTarget = Vector3.Distance(transform.position, target.transform.position);
-
-                    // You can add more conditions here to filter the targets, e.g., check if the target is visible, within a certain distance, etc.
-
-                    // React to the target
-                    // For example, you might want to follow or attack the target.
-
-                    //If the Target is a Hiding Spot && if is position in not in the hiding list
-                    if (target.CompareTag("HidingSpot") && !hidingSpots.Contains(target.gameObject))
-                    {
-                        Debug.Log(target.name);
-
-                        // You've found a hiding spot. Add it to your list of hiding spots.
-                        foundHidingSpots++; 
-                        Transform hidingSpot = target.transform;
-                        hidingSpots.Add(hidingSpot.gameObject);
-                    }
+                    hidingSpots.Add(hidingSpot.gameObject);
                 }
             }
-            #endregion
-            }
-        }
-
-        // If the timer is near the end, call MoveToFarthestHidingSpot.
-        if (timeLeftToLook <= GameManager.instance.hidingTime / 3)
-        {
-            isMovingAround = false;
-            isMovingToExplorationPoint = false;
-            timeLeftToLook = GameManager.instance.hidingTime;
-
-            MoveToFarthestHidingSpot();
         }
     }
 
-    private void MoveToFarthestHidingSpot()
-    {
-        if (hidingSpots.Count > 0)
-        {
-            // Find the farthest hiding spot from the Hider's current position.
-            Vector3 farthestSpot = Vector3.zero;
-            float farthestDistance = 0f;
-
-            foreach (GameObject spot in hidingSpots)
-            {
-                float distance = Vector3.Distance(seeker.position, spot.transform.position);
-
-                if (distance > farthestDistance)
-                {
-                    farthestDistance = distance;
-                    farthestSpot = spot.transform.position;
-                }
-            }
-
-            if (farthestSpot != Vector3.zero)
-            {
-                // Go to the farthest hiding spot.
-                MoveTo(farthestSpot);
-            }
-        }
-    }
-    #endregion
-
-    #region Seek
     private void DetectHider()
     {
         Collider[] targetsInViewRadius = Physics.OverlapSphere(transform.position, viewDistance, layerMask);
         foreach (Collider target in targetsInViewRadius)
         {
-            currentTarget = target.transform;
             Vector3 directionToTarget = (target.transform.position - transform.position).normalized;
 
 
@@ -280,16 +251,17 @@ public class AIController : MonoBehaviour
                 {
                     if (hit.collider.CompareTag("Hider"))
                     {
+                        currentTarget = target.transform;
+
                         // Hider is detected. Implement the action you want the Seeker to take when a Hider is found.
                         // Draw a line using the LineRenderer from the AI's position to the detected agent.// Draw a line using the LineRenderer from the AI's position to the detected agent.
                         m_LineRenderer.enabled = true;
                         m_LineRenderer.SetPosition(0, transform.position);
                         m_LineRenderer.SetPosition(1, currentTarget.position + new Vector3(0, 1.5f, 0)); // You can update this for multiple detected agents.
-                                            
-                        // For example, you can stop seeking and start chasing the Hider.
-                        StopSeeking();
+
+                        // Stop seeking and start chasing the Hider.
                         Debug.Log("End");
-                        //ChaseHider(GetComponent<Collider>().transform);
+                        Debug.Break();
                     }
                 }
                 else
@@ -303,53 +275,50 @@ public class AIController : MonoBehaviour
             }
         }
     }
+    #endregion
 
-    private List<Vector3> exploredPositions = new List<Vector3>();
+    #region Hide Behaviour
 
-    private void ExploreNewPosition()
+    private void MoveToFarthestHidingSpot()
     {
-        if (exploredPositions.Count == 0)
+        if (hidingSpots.Count > 0)
         {
-            // Initial exploration - add the current position.
-            exploredPositions.Add(transform.position);
-        }
+            // Find the farthest hiding spot from the Hider's current position.
+            Vector3 farthestSpot = Vector3.zero;
+            float farthestDistance = 0f;
 
-        // Choose a random exploration point that hasn't been explored yet.
-        Vector3 randomExplorationPoint;
-        int maxAttempts = 10; // Adjust this value as needed to avoid getting stuck.
-
-        for (int i = 0; i < maxAttempts; i++)
-        {
-            randomExplorationPoint = GetRandomExplorationPoint();
-
-            // Check if the position is not in the list of explored positions.
-            if (!exploredPositions.Contains(randomExplorationPoint))
+            foreach (GameObject spot in hidingSpots)
             {
-                // Explore the new position.
-                exploredPositions.Add(randomExplorationPoint);
+                foreach (AIController seeker in GameManager.instance.seekers)
+                {
+                    float distance = Vector3.Distance(seeker.transform.position, spot.transform.position);
 
-                // Set the AI's destination to the exploration point.
-                MoveTo(randomExplorationPoint);
+                    if (distance > farthestDistance)
+                    {
+                        farthestDistance = distance;
+                        farthestSpot = spot.transform.position;
+                    }
+                }
+            }
 
-                return; // Break out of the loop once a valid unexplored position is found.
+            if (farthestSpot != Vector3.zero)
+            {
+                // Go to the farthest hiding spot.
+                MoveTo(farthestSpot);
+                hidingSpots.Clear();
             }
         }
     }
-
-
-    private void StopSeeking()
-    {
-        isSeeking = false;
-    }
-
-    private void ChaseHider(Transform hiderTransform)
-    {
-        // Implement the logic to chase the Hider, e.g., set the destination and change AI behavior.
-        // You can use the NavMeshAgent and other methods you've defined for chasing.
-        // Calculate the path to the Hider's position
-        m_NavMeshAgent.SetDestination(hiderTransform.position);
-    }
     #endregion
+
+    private Vector3 GetRandomExplorationPoint()
+    {
+        Vector3 randomDirection = Random.insideUnitSphere * explorationRadius;
+        randomDirection += transform.position;
+        NavMeshHit hit;
+        NavMesh.SamplePosition(randomDirection, out hit, explorationRadius, 1);
+        return hit.position;
+    }
 
     public Vector3 DirFromAngle(float angleInDegrees, bool isGlobal)
     {

@@ -107,15 +107,15 @@ NavMeshSettings:
   m_BuildSettings:
     serializedVersion: 2
     agentTypeID: 0
-    agentRadius: 0.45
-    agentHeight: 1
+    agentRadius: 0.55
+    agentHeight: 2
     agentSlope: 45
     agentClimb: 0.4
     ledgeDropHeight: 0
     maxJumpAcrossDistance: 0
     minRegionArea: 2
     manualCellSize: 0
-    cellSize: 0.14999999
+    cellSize: 0.18333334
     manualTileSize: 0
     tileSize: 256
     accuratePlacement: 0
@@ -141,7 +141,7 @@ GameObject:
   m_Icon: {fileID: 7866945982896999795, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &95661946
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -591,7 +591,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4707533379584928, guid: 737e54f7cf918c341b7c1b8e0b5c2d1d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.3999921
+      value: 1.3999871
       objectReference: {fileID: 0}
     - target: {fileID: 4707533379584928, guid: 737e54f7cf918c341b7c1b8e0b5c2d1d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -599,7 +599,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4707533379584928, guid: 737e54f7cf918c341b7c1b8e0b5c2d1d, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 14.079902
+      value: 13.829902
       objectReference: {fileID: 0}
     - target: {fileID: 4707533379584928, guid: 737e54f7cf918c341b7c1b8e0b5c2d1d, type: 3}
       propertyPath: m_LocalRotation.w
@@ -982,12 +982,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   role: 0
+  speed: 3.5
+  explorationRadius: 15
+  currentTarget: {fileID: 0}
   hidingSpots: []
-  chaseSpeed: 5
-  visibleAgents: []
-  seekRotationSpeed: 60
-  seekRotationDuration: 2
-  seeker: {fileID: 676152757}
   eyes: {fileID: 611119176}
   layerMask:
     serializedVersion: 2
@@ -1001,7 +999,7 @@ NavMeshAgent:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 433464079}
-  m_Enabled: 0
+  m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.37
   m_Speed: 3.5
@@ -1425,12 +1423,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   role: 1
+  speed: 3.5
+  explorationRadius: 20
+  currentTarget: {fileID: 0}
   hidingSpots: []
-  chaseSpeed: 5
-  visibleAgents: []
-  seekRotationSpeed: 60
-  seekRotationDuration: 2
-  seeker: {fileID: 0}
   eyes: {fileID: 1931225973}
   layerMask:
     serializedVersion: 2
@@ -1444,7 +1440,7 @@ NavMeshAgent:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 676152756}
-  m_Enabled: 0
+  m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.37
   m_Speed: 3.5
@@ -1786,7 +1782,7 @@ GameObject:
   m_Icon: {fileID: 7866945982896999795, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &853458736
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2230,7 +2226,7 @@ GameObject:
   m_Icon: {fileID: 7866945982896999795, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &1084877837
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2339,7 +2335,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1093820266}
-  - component: {fileID: 1093820265}
+  - component: {fileID: 1093820267}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -2347,22 +2343,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!208 &1093820265
-NavMeshObstacle:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1093820264}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Shape: 1
-  m_Extents: {x: 22.3, y: 0.5, z: 2.04}
-  m_MoveThreshold: 0.1
-  m_Carve: 0
-  m_CarveOnlyStationary: 1
-  m_Center: {x: 0, y: 0, z: 0}
-  m_TimeToStationary: 0.5
 --- !u!4 &1093820266
 Transform:
   m_ObjectHideFlags: 0
@@ -2378,6 +2358,18 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 12
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1093820267
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1093820264}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5594a879b4937b40a94f7c6de99a171, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1103091719
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3064,7 +3056,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4833515440200730, guid: 5419e7945ce151a4bb8a6ffd512bdf2e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -4.500062
+      value: -4.5000668
       objectReference: {fileID: 0}
     - target: {fileID: 4833515440200730, guid: 5419e7945ce151a4bb8a6ffd512bdf2e, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3072,7 +3064,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4833515440200730, guid: 5419e7945ce151a4bb8a6ffd512bdf2e, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 7.5797935
+      value: 7.3297935
       objectReference: {fileID: 0}
     - target: {fileID: 4833515440200730, guid: 5419e7945ce151a4bb8a6ffd512bdf2e, type: 3}
       propertyPath: m_LocalRotation.w
@@ -3307,7 +3299,7 @@ GameObject:
   m_Icon: {fileID: 7866945982896999795, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &1605316798
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -3526,11 +3518,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd5d98392f0f5ab44b8f054928640631, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gameDuration: 300
-  hidingTime: 30
-  hider: {fileID: 433464083}
-  seeker: {fileID: 0}
   isGameOn: 0
+  hiders: []
+  seekers: []
+  gameDuration: 180
+  hidingTime: 30
 --- !u!1001 &1773394478
 PrefabInstance:
   m_ObjectHideFlags: 0

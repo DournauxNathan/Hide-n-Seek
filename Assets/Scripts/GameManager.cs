@@ -5,12 +5,12 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public static GameManager instance;
-    public float gameDuration = 300.0f; // Set the game duration in seconds.
-    public float hidingTime = 300.0f; // Set the game duration in seconds.
-    public AIController hider; // Reference to the Hider AI.
-    public AIController seeker; // Reference to the Seeker AI.
 
     public bool isGameOn = false;
+    public List<AIController> hiders; // Reference to the Hider AIs.
+    public List<AIController> seekers; // Reference to the Hider AIs.
+    public float gameDuration = 300.0f; // Set the game duration in seconds.
+    public float hidingTime = 300.0f; // Set the game duration in seconds.
 
     private float gameTimer;
     private float timer;
@@ -35,9 +35,12 @@ public class GameManager : MonoBehaviour
             timer -= Time.deltaTime;
 
             // Allow the Hider to look for hiding spots during the initial look duration.
-            if (isLookingForHidingSpots && hider != null)
+            if (isLookingForHidingSpots && hiders.Count != 0)
             {
-                hider.LookForHidingSpots();
+                foreach (AIController hider in hiders)
+                {
+                    hider.LookAround();
+                }
             }
         }
         else if (timer <= 0 && gameTimer > 0)
@@ -60,4 +63,15 @@ public class GameManager : MonoBehaviour
         gameTimer = gameDuration;
         timer = hidingTime;        
     }
+
+    public void SubscribeHiders(AIController transform)
+    {
+        hiders.Add(transform);
+    }
+    
+    public void SubscribeSeekers(AIController transform)
+    {
+        seekers.Add(transform);
+    }
 }
+
