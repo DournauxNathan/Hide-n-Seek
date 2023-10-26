@@ -49,7 +49,7 @@ public class AIController : MonoBehaviour
     private float nextMoveTime;
     private bool isMovingAround = true;
     private bool isMovingToExplorationPoint = false;
-    private List<Vector3> pointAlreadyVisited = new List<Vector3>();
+    private List<Vector3> pointAlreadyVisited = new List<Vector3>();    
 
     [Header("REFERENCES")]
     [Tooltip("The reference of the currently detected agent to chase")] [SerializeField] private Transform currentTarget;
@@ -62,16 +62,13 @@ public class AIController : MonoBehaviour
     [Range(0f, 360f)] public float viewAngle;
     public float viewDistance;
 
-    // Example usage to modify area costs dynamically.
-    DynamicNavMeshAreaModification areaModification;
     private NavMeshAgent m_NavMeshAgent;
     private LineRenderer m_LineRenderer; // The LineRenderer when seeker detect a hider.
 
     // Start is called before the first frame update
     private void Start()
     {
-        // Find the DynamicNavMeshAreaModification script in the scene.
-        areaModification = FindObjectOfType<DynamicNavMeshAreaModification>();
+        
 
         if (role == Role.Seeker)
         {
@@ -173,6 +170,7 @@ public class AIController : MonoBehaviour
             {
                 isMovingToExplorationPoint = false;
                 isMovingAround = true; // Resume moving around after finding spots.
+
             }
         }
     }
@@ -180,7 +178,9 @@ public class AIController : MonoBehaviour
     public void MoveTo(Vector3 position)
     {
         m_NavMeshAgent.SetDestination(position);
+
     }
+
 
     #endregion
 
@@ -225,8 +225,6 @@ public class AIController : MonoBehaviour
 
                     // You've found a hiding spot. Add it to your list of hiding spots.
                     Transform hidingSpot = target.transform;
-
-                    areaModification.ModifyAreaCost(1, 2.0f);
 
                     hidingSpots.Add(hidingSpot.gameObject);
                 }
@@ -317,6 +315,7 @@ public class AIController : MonoBehaviour
         randomDirection += transform.position;
         NavMeshHit hit;
         NavMesh.SamplePosition(randomDirection, out hit, explorationRadius, 1);
+
         return hit.position;
     }
 
