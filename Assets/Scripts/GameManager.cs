@@ -73,5 +73,10 @@ public class GameManager : MonoBehaviour
     {
         seekers.Add(transform);
     }
+
+    public bool HasGameBegin()
+    {
+        return isGameOn;
+    }
 }
 
