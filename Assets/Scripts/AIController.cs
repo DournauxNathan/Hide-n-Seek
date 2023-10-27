@@ -87,7 +87,7 @@ public class AIController : MonoBehaviour
         }
 
         m_LineRenderer = GetComponent<LineRenderer>();
-        m_NavMeshAgent = GetComponent < NavMeshAgent();
+        m_NavMeshAgent = GetComponent <NavMeshAgent>();
 
         m_LineRenderer.enabled = false; // Initially hide the LineRenderer.
 
