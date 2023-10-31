@@ -39,15 +39,3 @@ Rewards are assigned based on the agent's actions. Achieving a hiding spot might
 ### Learning
 
 Throughout the learning process, the agent adjusts its actions to maximize rewards and minimize penalties. The reinforcement learning model is dynamic, adapting and evolving to transform the AI into a more skillful player.
-
-## Usage
-
-1. Clone or download this repository.
-2. Open it in Unity.
-3. Dive into Unity's ML-Agents tools to train the AI agents.
-4. Customize AI behaviors and tweak training settings to watch your agents flourish.
-5. Immerse yourself in gameplay with AI-controlled characters that have become experts at strategic movement to hiding spots.
-
-This project represents an exhilarating journey into the world of Unity ML-Agents, where AI agents evolve into intelligent, adaptable players. They learn and grow, adding depth and challenge to the Hide and Seek game.
-
-Feel free to experiment with AI behaviors, training settings, and various parameters to create the ultimate Hide and Seek experience using Unity and ML-Agents. Join me in the world of AI-powered gaming, and let's embark on this thrilling adventure together!
