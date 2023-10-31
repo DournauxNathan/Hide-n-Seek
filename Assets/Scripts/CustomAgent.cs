@@ -12,6 +12,10 @@ public class CustomAgent : Agent
     public event EventHandler OnEpisodeBeginEvent;
 
     [SerializeField] private HidingSpot hidingSpot;
+
+    [SerializeField] private MeshRenderer floorMeshRenderer;
+    [SerializeField] private Material winMaterial;
+    [SerializeField] private Material loseMaterial;
     
     private Rigidbody agentRigidbody;
 
@@ -27,9 +31,10 @@ public class CustomAgent : Agent
 
     public override void OnEpisodeBegin()
     {
-        transform.localPosition = Vector3.zero;
+        transform.localPosition = new Vector3(UnityEngine.Random.Range(-3f, +1f), 0, UnityEngine.Random.Range(-2f, +2f));
+        hidingSpot.transform.localPosition = new Vector3(UnityEngine.Random.Range(2.4f, +4f), .5f, UnityEngine.Random.Range(-2f, +2f));
 
-        OnEpisodeBeginEvent?.Invoke(this, EventArgs.Empty);
+        //OnEpisodeBeginEvent?.Invoke(this, EventArgs.Empty);
 
         // Reset the environment for a new episode, if needed.
     }
@@ -37,10 +42,13 @@ public class CustomAgent : Agent
     public override void CollectObservations(VectorSensor sensor)
     {
         // Define the agent's observations. These are the state variables for the agent.
+        sensor.AddObservation(transform.position);
+        sensor.AddObservation(hidingSpot.transform.position);
 
-        // Check if the hidingSpot is already taken
+
+        /*// Check if the hidingSpot is already taken
         sensor.AddObservation(hidingSpot.CanHide() ? 1 : 0);
-        
+
         sensor.AddObservation(GameManager.instance.HasGameBegin() ? 1 : 0);
 
         if (!GameManager.instance.HasGameBegin())
@@ -54,15 +62,18 @@ public class CustomAgent : Agent
         {
             sensor.AddObservation(0f); // x
             sensor.AddObservation(0f); // z
-        }    
+        }*/
     }
 
     public override void OnActionReceived(ActionBuffers actions)
     {
-        int moveX = actions.DiscreteActions[0]; // 0 = Don't Move; 1 = Left; 2 = Right
-        int moveZ = actions.DiscreteActions[0]; // 0 = Don't Move; 1 = Back; 2 = Forward
+        float moveX = actions.ContinuousActions[0]; // 0 = Don't Move; 1 = Left; 2 = Right
+        float moveZ = actions.ContinuousActions[1]; // 0 = Don't Move; 1 = Back; 2 = Forward
 
-        Vector3 addForce = new Vector3(moveX, 0, moveZ);
+        float moveSpeed = 5f;
+        transform.localPosition += new Vector3(moveX, 0, moveZ) * Time.deltaTime * moveSpeed;
+
+        /*Vector3 addForce = new Vector3(moveX, 0, moveZ);
 
         switch (moveX)
         {
@@ -79,7 +90,6 @@ public class CustomAgent : Agent
         }
 
 
-        float moveSpeed = 5f;
         agentRigidbody.velocity = addForce * moveSpeed + new Vector3(0, agentRigidbody.velocity.y, 0);
 
         bool isHidingSpotTaken = actions.DiscreteActions[2] == 1;
@@ -99,16 +109,30 @@ public class CustomAgent : Agent
             }
         }
 
-        AddReward(-1f / MaxStep);
+        AddReward(-1f / MaxStep);*/
     }
 
-    private void OnCollisionEnter(Collision collision)
+    public override void Heuristic(in ActionBuffers actionsOut)
     {
-        if (collision.gameObject.TryGetComponent<HidingSpot>(out HidingSpot spot))
-        {
-            AddReward(1f);
-            onHidingSpotDetected.Invoke(this, EventArgs.Empty);
+        ActionSegment<float> continuousAction = actionsOut.ContinuousActions;
+        continuousAction[0] = Input.GetAxisRaw("Horizontal"); 
+        continuousAction[1] = Input.GetAxisRaw("Vertical");
+    }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.TryGetComponent<HidingSpot>(out HidingSpot spot))
+        {
+            SetReward(1f);
+            //onHidingSpotDetected.Invoke(this, EventArgs.Empty);
+            floorMeshRenderer.material = winMaterial;
+            EndEpisode();
+        }
+
+        if (other.TryGetComponent<Wall>(out Wall wall))
+        {
+            SetReward(-1f);
+            floorMeshRenderer.material = loseMaterial;
             EndEpisode();
         }
     }

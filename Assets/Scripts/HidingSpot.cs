@@ -4,19 +4,8 @@ using UnityEngine;
 
 public class HidingSpot : MonoBehaviour
 {
-    private bool canHide;
-    private bool isTaken;
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    [SerializeField] private bool canHide;
+    [SerializeField] private bool isTaken;
 
     private void OnCollisionEnter(Collision collision)
     {
