@@ -28,4 +28,4 @@ To enhance the gameplay and manage game logic effectively, I've integrated the *
 
 - **Reinforcement Learning Branch:** The reinforcement learning (RL) branch contains all the files required for implementing the RL method using the ML-Agents package, including dependencies. This method allows the AI to learn and adapt its behavior over time, making it more intelligent and dynamic.
 
-For the reinforcement learning method, please check the [RL Method.md]().
+For the reinforcement learning method, please check the [RL Method.md](https://github.com/DournauxNathan/Hide-n-Seek/blob/main/Rl%20Method.md).
