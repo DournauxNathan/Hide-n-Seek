@@ -29,4 +29,10 @@ public class HidingSpot : MonoBehaviour
 
         return canHide;
     }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, 2f);
+    }
 }

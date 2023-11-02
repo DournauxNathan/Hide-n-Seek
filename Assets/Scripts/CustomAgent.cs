@@ -13,6 +13,8 @@ public class CustomAgent : Agent
 
     [SerializeField] private HidingSpot hidingSpot;
 
+    [SerializeField] private GameObject env;
+
     [SerializeField] private MeshRenderer floorMeshRenderer;
     [SerializeField] private Material winMaterial;
     [SerializeField] private Material loseMaterial;
@@ -31,8 +33,9 @@ public class CustomAgent : Agent
 
     public override void OnEpisodeBegin()
     {
-        transform.localPosition = new Vector3(UnityEngine.Random.Range(-3f, +1f), 0, UnityEngine.Random.Range(-2f, +2f));
-        hidingSpot.transform.localPosition = new Vector3(UnityEngine.Random.Range(2.4f, +4f), .5f, UnityEngine.Random.Range(-2f, +2f));
+        transform.localPosition = new Vector3(-2.72f, 0, 0);
+        //transform.localPosition = new Vector3(UnityEngine.Random.Range(-4f, 0.75f), 0, UnityEngine.Random.Range(-2f, +2f));
+        //hidingSpot.transform.localPosition = new Vector3(UnityEngine.Random.Range(2.4f, +4f), .5f, UnityEngine.Random.Range(-2f, +2f));
 
         //OnEpisodeBeginEvent?.Invoke(this, EventArgs.Empty);
 
@@ -72,6 +75,14 @@ public class CustomAgent : Agent
 
         float moveSpeed = 5f;
         transform.localPosition += new Vector3(moveX, 0, moveZ) * Time.deltaTime * moveSpeed;
+
+        float distanceToGoal = Vector3.Distance(transform.position, hidingSpot.transform.position);
+
+        if (distanceToGoal < 1f) // Adjust this threshold as needed
+        {
+            Debug.Log("");
+            AddReward(1f);
+        }
 
         /*Vector3 addForce = new Vector3(moveX, 0, moveZ);
 
@@ -126,6 +137,7 @@ public class CustomAgent : Agent
             SetReward(1f);
             //onHidingSpotDetected.Invoke(this, EventArgs.Empty);
             floorMeshRenderer.material = winMaterial;
+            Debug.LogWarning("Success in "+ env.name, env.transform.parent.gameObject);
             EndEpisode();
         }
 
