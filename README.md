@@ -1,6 +1,6 @@
 # Training AI with Unity ML-Agents: Hide and Seek Game
 
-Welcome to my Unity3D Hide and Seek Game repository. In this project, I've dived into the exciting world of Unity ML-Agents, aiming to teach AI-controlled characters to exhibit intelligent and dynamic behavior. Join me as I share my journey of enhancing a Hide and Seek game with AI agents that learn and adapt through reinforcement learning.
+In this project, I've dived into the exciting world of Unity ML-Agents, aiming to teach AI-controlled characters to a hide and Seek game with AI agents that learn and adapt through reinforcement learning.
 
 ## Overview
 
