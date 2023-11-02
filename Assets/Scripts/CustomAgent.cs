@@ -76,11 +76,11 @@ public class CustomAgent : Agent
         float moveSpeed = 5f;
         transform.localPosition += new Vector3(moveX, 0, moveZ) * Time.deltaTime * moveSpeed;
 
-        float distanceToGoal = Vector3.Distance(transform.position, hidingSpot.transform.position);
 
-        if (distanceToGoal < 1f) // Adjust this threshold as needed
+        float distanceToGoal = Vector3.Distance(this.transform.position, hidingSpot.transform.position);
+
+        if (distanceToGoal < 2f)
         {
-            Debug.Log("");
             AddReward(1f);
         }
 
@@ -119,8 +119,15 @@ public class CustomAgent : Agent
                 }
             }
         }
+        */
+        AddReward(-1f / MaxStep);
+    }
 
-        AddReward(-1f / MaxStep);*/
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(hidingSpot.transform.position, 2f);
     }
 
     public override void Heuristic(in ActionBuffers actionsOut)
@@ -134,7 +141,7 @@ public class CustomAgent : Agent
     {
         if (other.TryGetComponent<HidingSpot>(out HidingSpot spot))
         {
-            SetReward(1f);
+            SetReward(+1f);
             //onHidingSpotDetected.Invoke(this, EventArgs.Empty);
             floorMeshRenderer.material = winMaterial;
             Debug.LogWarning("Success in "+ env.name, env.transform.parent.gameObject);
