@@ -24,7 +24,7 @@ To enhance the gameplay and manage game logic effectively, I've integrated the *
 
 ### Repository Branches
 
-- **Main Branch:** The main branch contains the Unity folder, which includes the basic game and pathfinding method.
+- **Pathfinding Branch:** The Pathfinding branch contains the basic game and pathfinding method.
 
 - **Reinforcement Learning Branch:** The reinforcement learning (RL) branch contains all the files required for implementing the RL method using the ML-Agents package, including dependencies. This method allows the AI to learn and adapt its behavior over time, making it more intelligent and dynamic.
 
