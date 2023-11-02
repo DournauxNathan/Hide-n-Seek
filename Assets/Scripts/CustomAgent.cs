@@ -77,19 +77,16 @@ public class CustomAgent : Agent
         float moveSpeed = 5f;
         transform.localPosition += new Vector3(moveX, 0, moveZ) * Time.deltaTime * moveSpeed;
 
-
-        Collider[] colliderArray = Physics.OverlapBox(transform.position, Vector3.up * 2f);
+        Collider[] colliderArray = Physics.OverlapSphere(transform.position, 1.5f);
         foreach (Collider collider in colliderArray)
         {
             if (collider.TryGetComponent<HidingSpot>(out HidingSpot spot))
             {
                 if (spot.CanHide())
                 {
-                    spot.Taken();
                     SetReward(+1f);
-                    //onHidingSpotDetected.Invoke(this, EventArgs.Empty);
+                    spot.Taken();
                     floorMeshRenderer.material = winMaterial;
-                    Debug.LogWarning("Success in " + env.name, env.transform.parent.gameObject);
                     EndEpisode();
                 }
             }
@@ -116,13 +113,6 @@ public class CustomAgent : Agent
 
         
         */
-    }
-
-
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(hidingSpot.transform.position, 1f);
     }
 
     public override void Heuristic(in ActionBuffers actionsOut)
