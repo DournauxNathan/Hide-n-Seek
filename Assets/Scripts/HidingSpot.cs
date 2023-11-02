@@ -21,12 +21,18 @@ public class HidingSpot : MonoBehaviour
 
     public void Taken()
     {
+        canHide = false;
         isTaken = true;
     }
 
     public bool CanHide()
     {
-
         return canHide;
+    }
+
+    public void Reset()
+    {
+        canHide = true;
+        isTaken = false;
     }
 }

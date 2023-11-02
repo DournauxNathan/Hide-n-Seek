@@ -33,6 +33,7 @@ public class CustomAgent : Agent
 
     public override void OnEpisodeBegin()
     {
+        hidingSpot.Reset();
         transform.localPosition = new Vector3(-2.72f, 0, 0);
         //transform.localPosition = new Vector3(UnityEngine.Random.Range(-4f, 0.75f), 0, UnityEngine.Random.Range(-2f, +2f));
         //hidingSpot.transform.localPosition = new Vector3(UnityEngine.Random.Range(2.4f, +4f), .5f, UnityEngine.Random.Range(-2f, +2f));
@@ -77,11 +78,21 @@ public class CustomAgent : Agent
         transform.localPosition += new Vector3(moveX, 0, moveZ) * Time.deltaTime * moveSpeed;
 
 
-        float distanceToGoal = Vector3.Distance(this.transform.position, hidingSpot.transform.position);
-
-        if (distanceToGoal < 2f)
+        Collider[] colliderArray = Physics.OverlapBox(transform.position, Vector3.up * 2f);
+        foreach (Collider collider in colliderArray)
         {
-            AddReward(1f);
+            if (collider.TryGetComponent<HidingSpot>(out HidingSpot spot))
+            {
+                if (spot.CanHide())
+                {
+                    spot.Taken();
+                    SetReward(+1f);
+                    //onHidingSpotDetected.Invoke(this, EventArgs.Empty);
+                    floorMeshRenderer.material = winMaterial;
+                    Debug.LogWarning("Success in " + env.name, env.transform.parent.gameObject);
+                    EndEpisode();
+                }
+            }
         }
 
         /*Vector3 addForce = new Vector3(moveX, 0, moveZ);
@@ -103,31 +114,15 @@ public class CustomAgent : Agent
 
         agentRigidbody.velocity = addForce * moveSpeed + new Vector3(0, agentRigidbody.velocity.y, 0);
 
-        bool isHidingSpotTaken = actions.DiscreteActions[2] == 1;
-        if (isHidingSpotTaken)
-        {
-            Collider[] colliderArray = Physics.OverlapBox(transform.position, Vector3.up * .5f);
-            foreach (Collider collider in colliderArray)
-            {
-                if (collider.TryGetComponent<HidingSpot>(out HidingSpot spot))
-                {
-                    if (spot.CanHide())
-                    {
-                        spot.Taken();
-                        AddReward(1f);
-                    }
-                }
-            }
-        }
+        
         */
-        AddReward(-1f / MaxStep);
     }
 
 
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(hidingSpot.transform.position, 2f);
+        Gizmos.DrawWireSphere(hidingSpot.transform.position, 1f);
     }
 
     public override void Heuristic(in ActionBuffers actionsOut)
@@ -139,15 +134,6 @@ public class CustomAgent : Agent
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.TryGetComponent<HidingSpot>(out HidingSpot spot))
-        {
-            SetReward(+1f);
-            //onHidingSpotDetected.Invoke(this, EventArgs.Empty);
-            floorMeshRenderer.material = winMaterial;
-            Debug.LogWarning("Success in "+ env.name, env.transform.parent.gameObject);
-            EndEpisode();
-        }
-
         if (other.TryGetComponent<Wall>(out Wall wall))
         {
             SetReward(-1f);
