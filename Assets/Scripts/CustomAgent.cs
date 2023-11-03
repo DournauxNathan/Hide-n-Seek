@@ -8,9 +8,6 @@ using Unity.MLAgents.Sensors;
 
 public class CustomAgent : Agent
 {
-    public event EventHandler onHidingSpotDetected;
-    public event EventHandler OnEpisodeBeginEvent;
-
     [SerializeField] private HidingSpot hidingSpot;
 
     [SerializeField] private GameObject env;
@@ -18,108 +15,105 @@ public class CustomAgent : Agent
     [SerializeField] private MeshRenderer floorMeshRenderer;
     [SerializeField] private Material winMaterial;
     [SerializeField] private Material loseMaterial;
-    
-    private Rigidbody agentRigidbody;
 
-    private void Awake()
-    {
-        agentRigidbody = GetComponent<Rigidbody>();
-    }
+    [SerializeField] private float maxRaycastDistance = 5f;
+
+    Rigidbody agentRigidbody;
 
     public override void Initialize()
     {
-        // Initialize your agent, e.g., set up references or perform any necessary setup.
+        agentRigidbody = GetComponent<Rigidbody>();
     }
 
     public override void OnEpisodeBegin()
     {
         hidingSpot.Reset();
-        transform.localPosition = new Vector3(-2.72f, 0, 0);
-        //transform.localPosition = new Vector3(UnityEngine.Random.Range(-4f, 0.75f), 0, UnityEngine.Random.Range(-2f, +2f));
-        //hidingSpot.transform.localPosition = new Vector3(UnityEngine.Random.Range(2.4f, +4f), .5f, UnityEngine.Random.Range(-2f, +2f));
 
-        //OnEpisodeBeginEvent?.Invoke(this, EventArgs.Empty);
-
-        // Reset the environment for a new episode, if needed.
+        agentRigidbody.velocity = Vector3.zero;
+        transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(0, 360)));
     }
 
     public override void CollectObservations(VectorSensor sensor)
     {
         // Define the agent's observations. These are the state variables for the agent.
-        sensor.AddObservation(transform.position);
-        sensor.AddObservation(hidingSpot.transform.position);
-
-
-        /*// Check if the hidingSpot is already taken
-        sensor.AddObservation(hidingSpot.CanHide() ? 1 : 0);
-
-        sensor.AddObservation(GameManager.instance.HasGameBegin() ? 1 : 0);
-
-        if (!GameManager.instance.HasGameBegin())
-        {
-            // Calculte the direction between the hiding spot and the agent
-            Vector3 dirToSpot = (hidingSpot.transform.localPosition - transform.position).normalized;
-            sensor.AddObservation(dirToSpot.x);
-            sensor.AddObservation(dirToSpot.z);
-        }
-        else
-        {
-            sensor.AddObservation(0f); // x
-            sensor.AddObservation(0f); // z
-        }*/
+        sensor.AddObservation(transform.InverseTransformDirection(agentRigidbody.velocity));
+        
+        sensor.AddObservation(hidingSpot.transform.position);        
     }
 
-    public override void OnActionReceived(ActionBuffers actions)
+    public void MoveAgent(ActionSegment<int> act)
     {
-        float moveX = actions.ContinuousActions[0]; // 0 = Don't Move; 1 = Left; 2 = Right
-        float moveZ = actions.ContinuousActions[1]; // 0 = Don't Move; 1 = Back; 2 = Forward
+        var dirToGo = Vector3.zero;
+        var rotateDir = Vector3.zero;
 
-        float moveSpeed = 5f;
-        transform.localPosition += new Vector3(moveX, 0, moveZ) * Time.deltaTime * moveSpeed;
+        var action = act[0];
+        switch (action)
+        {
+            case 1:
+                dirToGo = transform.forward * 1f;
+                break;
+            case 2:
+                dirToGo = transform.forward * -1f;
+                break;
+            case 3:
+                rotateDir = transform.up * 1f;
+                break;
+            case 4:
+                rotateDir = transform.up * -1f;
+                break;
+        }
+        transform.Rotate(rotateDir, Time.deltaTime * 200f);
+        agentRigidbody.AddForce(dirToGo * 2f, ForceMode.VelocityChange);
+    }
 
-        Collider[] colliderArray = Physics.OverlapSphere(transform.position, 1.5f);
+    public void DetectHidingSpot()
+    {
+        Collider[] colliderArray = Physics.OverlapSphere(transform.position, 1f);
+        
         foreach (Collider collider in colliderArray)
         {
             if (collider.TryGetComponent<HidingSpot>(out HidingSpot spot))
             {
                 if (spot.CanHide())
                 {
-                    SetReward(+1f);
+                    SetReward(2f);
+                    transform.LookAt(hidingSpot.transform.localEulerAngles);
                     spot.Taken();
                     floorMeshRenderer.material = winMaterial;
                     EndEpisode();
                 }
             }
         }
+    }
 
-        /*Vector3 addForce = new Vector3(moveX, 0, moveZ);
+    public override void OnActionReceived(ActionBuffers actions)
+    {
+        AddReward(-1f / MaxStep);
 
-        switch (moveX)
-        {
-            case 0: addForce.x = 0f; break;
-            case 1: addForce.x = -1f; break;
-            case 2: addForce.x = +1f; break;
-        }
-
-        switch (moveZ)
-        {
-            case 0: addForce.z = 0f; break;
-            case 1: addForce.z = -1f; break;
-            case 2: addForce.z = +1f; break;
-        }
-
-
-        agentRigidbody.velocity = addForce * moveSpeed + new Vector3(0, agentRigidbody.velocity.y, 0);
-
-        
-        */
+        MoveAgent(actions.DiscreteActions);
+        DetectHidingSpot();
     }
 
     public override void Heuristic(in ActionBuffers actionsOut)
     {
-        ActionSegment<float> continuousAction = actionsOut.ContinuousActions;
-        continuousAction[0] = Input.GetAxisRaw("Horizontal"); 
-        continuousAction[1] = Input.GetAxisRaw("Vertical");
+        var discreteActionsOut = actionsOut.DiscreteActions;
+        if (Input.GetKey(KeyCode.D))
+        {
+            discreteActionsOut[0] = 3;
+        }
+        else if (Input.GetKey(KeyCode.Z))
+        {
+            discreteActionsOut[0] = 1;
+        }
+        else if (Input.GetKey(KeyCode.Q))
+        {
+            discreteActionsOut[0] = 4;
+        }
+        else if (Input.GetKey(KeyCode.S))
+        {
+            discreteActionsOut[0] = 2;
+        }
     }
 
     private void OnTriggerEnter(Collider other)

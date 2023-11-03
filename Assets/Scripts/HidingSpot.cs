@@ -5,7 +5,7 @@ using UnityEngine;
 public class HidingSpot : MonoBehaviour
 {
     [SerializeField] private bool canHide;
-    [SerializeField] private bool isTaken;
+    [SerializeField] private bool isTaken = false;
 
     private void OnCollisionEnter(Collision collision)
     {
