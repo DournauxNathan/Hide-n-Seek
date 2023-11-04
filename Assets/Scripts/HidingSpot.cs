@@ -7,6 +7,8 @@ public class HidingSpot : MonoBehaviour
     [SerializeField] private bool canHide;
     [SerializeField] private bool isTaken;
 
+    [SerializeField] private List<Transform> spawnPoints;
+
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.collider.CompareTag("Hider"))
@@ -35,5 +37,8 @@ public class HidingSpot : MonoBehaviour
     {
         canHide = true;
         isTaken = false;
+
+        int random = Random.Range(0, spawnPoints.Count);
+        this.transform.localPosition = spawnPoints[random].localPosition;
     }
 }

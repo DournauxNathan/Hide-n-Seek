@@ -122,7 +122,7 @@ public class CustomAgent : Agent
                 break;
         }
 
-        transform.Rotate(rotateDir, Time.deltaTime * 200f);
+        //transform.Rotate(rotateDir, Time.deltaTime * 200f);
         m_AgentRb.AddForce(dirToGo * .5f, ForceMode.VelocityChange);
     }
 
