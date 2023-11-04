@@ -8,27 +8,33 @@ using Unity.MLAgents.Sensors;
 
 public class CustomAgent : Agent
 {
-    [Header("Refs")]
-    [SerializeField] private HidingSpot hidingSpot;
-    [SerializeField] private GameObject env;
+
+    // Speed of agent rotation.
+    public float turnSpeed = 300;
+    // Speed of agent movement.
+    public float moveSpeed = 2;
+
+    [Header("References")]
+    [SerializeField] private HidingSpot hidingSpot; // Reference to the hiding spot
+    [SerializeField] private GameObject env; // Reference to the environment
 
     [Header("Hiding Time")]
-    [SerializeField] private float timer;
-    [SerializeField] private bool runTimer; 
+    [SerializeField] private float timer; // Time for hiding
+    [SerializeField] private bool runTimer; // Flag to control the timer
 
     [Header("End Episode Visualizer")]
-    [SerializeField] private MeshRenderer floorMeshRenderer;
-    [SerializeField] private Material winMaterial;
-    [SerializeField] private Material loseMaterial;
-    [SerializeField] private Material wallCollisionMaterial;
-    [Header("End Episode Visualizer")]
-    
+    [SerializeField] private MeshRenderer floorMeshRenderer; // Visualizer for the floor
+    [SerializeField] private Material winMaterial; // Material for winning state
+    [SerializeField] private Material loseMaterial; // Material for losing state
+    [SerializeField] private Material wallCollisionMaterial; // Material for collision with walls
+
     Rigidbody m_AgentRb;
+
+    #region Initialization
 
     public override void Initialize()
     {
         m_AgentRb = GetComponent<Rigidbody>();
-
 
         m_AgentRb.velocity = Vector3.zero;
         transform.rotation = Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(0, 360)));
@@ -41,27 +47,40 @@ public class CustomAgent : Agent
     {
         hidingSpot.Reset();
 
+        m_AgentRb.velocity = Vector3.zero;
         transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(0, 360)));
 
-        //Reset Timer
+        // Reset Timer
         timer = GameManager.instance.hidingTime;
         runTimer = true;
     }
 
+    #endregion
+
+    #region Observations
+
     public override void CollectObservations(VectorSensor sensor)
     {
-        // Define the agent's observations. These are the state variables for the agent.
+        // Agent's velocity and rotation
         sensor.AddObservation(transform.InverseTransformDirection(m_AgentRb.velocity));
+        sensor.AddObservation(transform.localRotation);
 
+        // Hiding spot's position
         sensor.AddObservation(hidingSpot.transform.position);
 
+        // Timer value
         sensor.AddObservation(timer);
     }
+
+    #endregion
+
+    #region Hiding Spot Detection
 
     public void DetectHidingSpot()
     {
         Collider[] colliderArray = Physics.OverlapSphere(transform.position, 1f);
-        
+
         foreach (Collider collider in colliderArray)
         {
             if (collider.TryGetComponent<HidingSpot>(out HidingSpot spot))
@@ -78,10 +97,13 @@ public class CustomAgent : Agent
         }
     }
 
+    #endregion
+
+    #region Actions and Movement
+
     public override void OnActionReceived(ActionBuffers actions)
     {
-        //AddReward(-1f / MaxStep);
-
+        // Timer management
         if (runTimer)
         {
             timer -= Time.deltaTime;
@@ -95,57 +117,64 @@ public class CustomAgent : Agent
             }
         }
 
-        MoveAgent(actions.DiscreteActions);
+        MoveAgent(actions);
         DetectHidingSpot();
     }
 
-    public void MoveAgent(ActionSegment<int> act)
+    public void MoveAgent(ActionBuffers actionBuffers)
     {
-        var dirToGo = Vector3.zero;
-        var rotateDir = Vector3.zero;
+        Vector3 dirToGo = Vector3.zero;
+        Vector3 rotateDir = Vector3.zero;
 
-        var action = act[0];
+        var continuousActions = actionBuffers.ContinuousActions;
 
-        switch (action)
+        var forward = Mathf.Clamp(continuousActions[0], -1f, 1f);
+        var right = Mathf.Clamp(continuousActions[1], -1f, 1f);
+        var rotate = Mathf.Clamp(continuousActions[2], -1f, 1f);
+
+        dirToGo = transform.forward * forward;
+        dirToGo += transform.right * right;
+        rotateDir = -transform.up * rotate;
+
+        // Apply torque for rotation
+        m_AgentRb.AddTorque(transform.up * rotate * turnSpeed, ForceMode.Force);
+
+        m_AgentRb.AddForce(dirToGo * moveSpeed, ForceMode.VelocityChange);
+
+        if (m_AgentRb.velocity.sqrMagnitude > 25f) // slow it down
         {
-            case 1:
-                dirToGo = transform.forward * 1f;
-                break;
-            case 2:
-                dirToGo = transform.forward * -1f;
-                break;
-            case 3:
-                rotateDir = transform.up * 1f;
-                break;
-            case 4:
-                rotateDir = transform.up * -1f;
-                break;
+            m_AgentRb.velocity *= 0.95f;
         }
-
-        //transform.Rotate(rotateDir, Time.deltaTime * 200f);
-        m_AgentRb.AddForce(dirToGo * .5f, ForceMode.VelocityChange);
     }
+
+    #endregion
+
+    #region Heuristic Control
 
     public override void Heuristic(in ActionBuffers actionsOut)
     {
-        var discreteActionsOut = actionsOut.DiscreteActions;
+        var continuousActionsOut = actionsOut.ContinuousActions;
         if (Input.GetKey(KeyCode.D))
         {
-            discreteActionsOut[0] = 3;
+            continuousActionsOut[2] = 1;
         }
-        else if (Input.GetKey(KeyCode.Z))
+        if (Input.GetKey(KeyCode.Z))
         {
-            discreteActionsOut[0] = 1;
+            continuousActionsOut[0] = 1;
         }
-        else if (Input.GetKey(KeyCode.Q))
+        if (Input.GetKey(KeyCode.Q))
         {
-            discreteActionsOut[0] = 4;
+            continuousActionsOut[2] = -1;
         }
-        else if (Input.GetKey(KeyCode.S))
+        if (Input.GetKey(KeyCode.S))
         {
-            discreteActionsOut[0] = 2;
+            continuousActionsOut[0] = -1;
         }
     }
+
+    #endregion
+
+    #region Collision Handling
 
     void OnCollisionEnter(Collision collision)
     {
@@ -156,4 +185,6 @@ public class CustomAgent : Agent
             EndEpisode();
         }
     }
+
+    #endregion
 }
