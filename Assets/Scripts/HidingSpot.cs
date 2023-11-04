@@ -5,17 +5,18 @@ using UnityEngine;
 public class HidingSpot : MonoBehaviour
 {
     [SerializeField] private bool canHide;
-    [SerializeField] private bool isTaken = false;
+    [SerializeField] private bool isTaken;
 
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.collider.CompareTag("Hider"))
         {
-            canHide = true;
+            canHide = false;
+            isTaken = true;
         }
         else
         {
-            canHide = false;
+            canHide = true;
         }
     }
 

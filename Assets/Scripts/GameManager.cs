@@ -27,7 +27,7 @@ public class GameManager : MonoBehaviour
         timer = hidingTime;
         isLookingForHidingSpots = true;
     }
-
+/*
     private void Update()
     {
         if (timer > 0 && gameTimer == gameDuration)
@@ -57,7 +57,7 @@ public class GameManager : MonoBehaviour
             // The game has ended. You can add game-ending logic here.
         }
     }
-
+*/
     private void Reset()
     {
         gameTimer = gameDuration;

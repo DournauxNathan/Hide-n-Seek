@@ -8,38 +8,95 @@ using Unity.MLAgents.Sensors;
 
 public class CustomAgent : Agent
 {
+    [Header("Refs")]
     [SerializeField] private HidingSpot hidingSpot;
-
     [SerializeField] private GameObject env;
 
+    [Header("Hiding Time")]
+    [SerializeField] private float timer;
+    [SerializeField] private bool runTimer; 
+
+    [Header("End Episode Visualizer")]
     [SerializeField] private MeshRenderer floorMeshRenderer;
     [SerializeField] private Material winMaterial;
     [SerializeField] private Material loseMaterial;
-
-    [SerializeField] private float maxRaycastDistance = 5f;
-
-    Rigidbody agentRigidbody;
+    [SerializeField] private Material wallCollisionMaterial;
+    [Header("End Episode Visualizer")]
+    
+    Rigidbody m_AgentRb;
 
     public override void Initialize()
     {
-        agentRigidbody = GetComponent<Rigidbody>();
+        m_AgentRb = GetComponent<Rigidbody>();
+
+
+        m_AgentRb.velocity = Vector3.zero;
+        transform.rotation = Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(0, 360)));
+
+        timer = GameManager.instance.hidingTime;
+        runTimer = true;
     }
 
     public override void OnEpisodeBegin()
     {
         hidingSpot.Reset();
 
-        agentRigidbody.velocity = Vector3.zero;
         transform.localPosition = Vector3.zero;
-        transform.localRotation = Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(0, 360)));
+
+        //Reset Timer
+        timer = GameManager.instance.hidingTime;
+        runTimer = true;
     }
 
     public override void CollectObservations(VectorSensor sensor)
     {
         // Define the agent's observations. These are the state variables for the agent.
-        sensor.AddObservation(transform.InverseTransformDirection(agentRigidbody.velocity));
+        sensor.AddObservation(transform.InverseTransformDirection(m_AgentRb.velocity));
+
+        sensor.AddObservation(hidingSpot.transform.position);
+
+        sensor.AddObservation(timer);
+    }
+
+    public void DetectHidingSpot()
+    {
+        Collider[] colliderArray = Physics.OverlapSphere(transform.position, 1f);
         
-        sensor.AddObservation(hidingSpot.transform.position);        
+        foreach (Collider collider in colliderArray)
+        {
+            if (collider.TryGetComponent<HidingSpot>(out HidingSpot spot))
+            {
+                if (spot.CanHide() && timer > 0)
+                {
+                    SetReward(2f);
+                    transform.LookAt(hidingSpot.transform.localEulerAngles);
+                    spot.Taken();
+                    floorMeshRenderer.material = winMaterial;
+                    EndEpisode();
+                }
+            }
+        }
+    }
+
+    public override void OnActionReceived(ActionBuffers actions)
+    {
+        //AddReward(-1f / MaxStep);
+
+        if (runTimer)
+        {
+            timer -= Time.deltaTime;
+
+            if (timer <= 0)
+            {
+                runTimer = false;
+                SetReward(-1f);
+                floorMeshRenderer.material = loseMaterial;
+                EndEpisode();
+            }
+        }
+
+        MoveAgent(actions.DiscreteActions);
+        DetectHidingSpot();
     }
 
     public void MoveAgent(ActionSegment<int> act)
@@ -48,6 +105,7 @@ public class CustomAgent : Agent
         var rotateDir = Vector3.zero;
 
         var action = act[0];
+
         switch (action)
         {
             case 1:
@@ -63,36 +121,9 @@ public class CustomAgent : Agent
                 rotateDir = transform.up * -1f;
                 break;
         }
+
         transform.Rotate(rotateDir, Time.deltaTime * 200f);
-        agentRigidbody.AddForce(dirToGo * 2f, ForceMode.VelocityChange);
-    }
-
-    public void DetectHidingSpot()
-    {
-        Collider[] colliderArray = Physics.OverlapSphere(transform.position, 1f);
-        
-        foreach (Collider collider in colliderArray)
-        {
-            if (collider.TryGetComponent<HidingSpot>(out HidingSpot spot))
-            {
-                if (spot.CanHide())
-                {
-                    SetReward(2f);
-                    transform.LookAt(hidingSpot.transform.localEulerAngles);
-                    spot.Taken();
-                    floorMeshRenderer.material = winMaterial;
-                    EndEpisode();
-                }
-            }
-        }
-    }
-
-    public override void OnActionReceived(ActionBuffers actions)
-    {
-        AddReward(-1f / MaxStep);
-
-        MoveAgent(actions.DiscreteActions);
-        DetectHidingSpot();
+        m_AgentRb.AddForce(dirToGo * .5f, ForceMode.VelocityChange);
     }
 
     public override void Heuristic(in ActionBuffers actionsOut)
@@ -116,12 +147,12 @@ public class CustomAgent : Agent
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    void OnCollisionEnter(Collision collision)
     {
-        if (other.TryGetComponent<Wall>(out Wall wall))
+        if (collision.gameObject.TryGetComponent<Wall>(out Wall wall))
         {
             SetReward(-1f);
-            floorMeshRenderer.material = loseMaterial;
+            floorMeshRenderer.material = wallCollisionMaterial;
             EndEpisode();
         }
     }
