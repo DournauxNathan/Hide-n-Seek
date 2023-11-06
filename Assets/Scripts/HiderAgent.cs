@@ -6,13 +6,10 @@ using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 
-public class CustomAgent : Agent
+public class HiderAgent : Agent
 {
-
-    // Speed of agent rotation.
-    public float turnSpeed = 300;
-    // Speed of agent movement.
-    public float moveSpeed = 2;
+    public float moveSpeed = 2; // Speed of agent movement.
+    public float turnSpeed = 300; // Speed of agent rotation.
 
     [Header("References")]
     [SerializeField] private HidingSpot hidingSpot; // Reference to the hiding spot
@@ -21,6 +18,12 @@ public class CustomAgent : Agent
     [Header("Hiding Time")]
     [SerializeField] private float timer; // Time for hiding
     [SerializeField] private bool runTimer; // Flag to control the timer
+    [SerializeField] private bool hasFoundHidingSpot = false;
+    private bool isFound = false;// Add this flag to indicate if the HiderAgent is found by the Seeker
+    public bool IsFound
+    {
+        get { return isFound; }
+    }
 
     [Header("End Episode Visualizer")]
     [SerializeField] private MeshRenderer floorMeshRenderer; // Visualizer for the floor
@@ -54,6 +57,8 @@ public class CustomAgent : Agent
         // Reset Timer
         timer = GameManager.instance.hidingTime;
         runTimer = true;
+
+        hasFoundHidingSpot = false;
     }
 
     #endregion
@@ -71,11 +76,26 @@ public class CustomAgent : Agent
 
         // Timer value
         sensor.AddObservation(timer);
+        sensor.AddObservation(isFound);
     }
 
     #endregion
 
     #region Hiding Spot Detection
+    
+
+    public void OnFound()
+    {
+        isFound = true;
+    }
+
+    public void OnNotFound()
+    {
+        isFound = false;
+    }
+
+    // Add this property to track whether the agent has found a hiding spot
+    private bool HasFoundHidingSpot { get; set; }
 
     public void DetectHidingSpot()
     {
@@ -87,12 +107,30 @@ public class CustomAgent : Agent
             {
                 if (spot.CanHide() && timer > 0)
                 {
-                    SetReward(2f);
-                    transform.LookAt(hidingSpot.transform.localEulerAngles);
+
+                    Vector3 hidingSpotPosition = spot.transform.position;
+                    Vector3 agentPosition = transform.position;
+
+                    // Calculate the direction to the hiding spot
+                    Vector3 directionToHidingSpot = hidingSpotPosition - agentPosition;
+                    directionToHidingSpot.y = 0f; // Ensure it's horizontal
+
+                    // Rotate the agent to face the hiding spot
+                    transform.LookAt(hidingSpotPosition);
+
+                    // Move the agent towards the hiding spot
+                    m_AgentRb.AddForce(directionToHidingSpot.normalized * moveSpeed, ForceMode.VelocityChange);
+
                     spot.Taken();
+                    hasFoundHidingSpot = true; // Mark that the agent has found a hiding spot
                     floorMeshRenderer.material = winMaterial;
+                    SetReward(2f);
                     EndEpisode();
                 }
+            }
+            else
+            {
+                hasFoundHidingSpot = false;
             }
         }
     }
@@ -117,7 +155,11 @@ public class CustomAgent : Agent
             }
         }
 
-        MoveAgent(actions);
+        if (HasFoundHidingSpot)
+        {
+            MoveAgent(actions);
+        }
+
         DetectHidingSpot();
     }
 

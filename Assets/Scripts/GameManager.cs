@@ -9,8 +9,9 @@ public class GameManager : MonoBehaviour
     public bool isGameOn = false;
     public List<AIController> hiders; // Reference to the Hider AIs.
     public List<AIController> seekers; // Reference to the Hider AIs.
-    public float gameDuration = 300.0f; // Set the game duration in seconds.
-    public float hidingTime = 300.0f; // Set the game duration in seconds.
+    public float gameDuration = 300f; // Set the game duration in seconds.
+    public float hidingTime = 10f; // Set the game duration in seconds.
+    public float seekTime = 10f; // Set the game duration in seconds.
 
     private float gameTimer;
     private float timer;
