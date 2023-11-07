@@ -10,33 +10,43 @@ public class SeekerAgent : Agent
 {
     [Header("References")]
     [SerializeField] private Transform hiderTransform; // Reference to the CustomAgent's transform
+    [SerializeField] private EndEpisodeVisualizer endVisualizer;
 
     public float moveSpeed = 2; // Speed of agent movement.
     public float turnSpeed = 300; // Speed of agent rotation.
-    [SerializeField] private float fov = 90f;
-    [SerializeField] private float foundDistanceThreshold = 2.0f; // Adjust this threshold based on your environment
+
+    [Header("Field Of View Parameters")]
+    [SerializeField] FieldOfView fieldOfView;
+    [Space(5)]
+    [SerializeField] [Range(0f, 360f)] private float fov;
+    [SerializeField] private float viewDistance;
 
     private float seekTimer;
-    [SerializeField] private bool canSeek = false;
 
     Rigidbody m_AgentRb;
 
     public override void Initialize()
     {
+        fieldOfView.SetFoV(fov);
+        fieldOfView.SetViewDistance(viewDistance);
+
         // Initialization
-        canSeek = false;
+        CanSeek = false;
         seekTimer = GameManager.instance.seekTime; // Adjust the seek time based on your requirements
     }
 
     public override void OnEpisodeBegin()
     {
+        endVisualizer.ResetPhase();
+
         m_AgentRb = GetComponent<Rigidbody>();
 
-        m_AgentRb.velocity = new Vector3(-4f, 0f, 4f);
+        m_AgentRb.velocity = Vector3.zero;
+        transform.localPosition = new Vector3(-4f, 0f, 4f);
         transform.rotation = Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(0, 360)));
 
         // Reset Seeker agent's position, state, etc.
-        canSeek = false;
+        CanSeek = false;
         seekTimer = GameManager.instance.seekTime;
     }
 
@@ -57,65 +67,73 @@ public class SeekerAgent : Agent
 
         // 4. Add a binary observation to indicate if the CustomAgent is found.
         sensor.AddObservation(IsHiderFound() ? 1f : 0f);
+
+        sensor.AddObservation(seekTimer);
     }
 
     private bool IsHiderFound()
     {
-        // Calculate the direction to the CustomAgent
-        Vector3 directionToCustomAgent = hiderTransform.position - transform.position;
-        directionToCustomAgent.y = 0f; // Ensure it's horizontal
-
-        // Calculate the angle between the Seeker's forward direction and the direction to the CustomAgent
-        float angleToCustomAgent = Vector3.Angle(transform.forward, directionToCustomAgent);
-
-        // Check if the CustomAgent is within the FOV and not blocked by obstacles
-        if (angleToCustomAgent <= fov * 0.5f)
+        if (fieldOfView.hitCollider != null)
         {
-            RaycastHit hit;
-            if (Physics.Raycast(transform.position, directionToCustomAgent, out hit, foundDistanceThreshold))
-            {
-                if (hit.collider.TryGetComponent<HiderAgent>(out HiderAgent hider))
-                {
-                    return true;
-                }
-            }
+            return true;
         }
 
         return false;
     }
 
     #region Actions and Movement
+    
+    public bool CanSeek { get; set; }
+    
     public override void OnActionReceived(ActionBuffers actions)
     {
-        if (!canSeek)
+        if (seekTimer <= 0) // Seeker didn't found the hider in time.
         {
+            SetReward(-1f);
+            hiderTransform.GetComponent<HiderAgent>().AddReward(2f);
+            endVisualizer.HiderNotFound();
+            hiderTransform.GetComponent<HiderAgent>().OnNotFound();
+            EndEpisode();
+        }
+
+        if (CanSeek)
+        {
+            endVisualizer.SwitchPhase();
+
             // Timer for the Seeker to wait before starting to seek
             seekTimer -= Time.deltaTime;
 
-            if (seekTimer <= 0)
-            {
-                canSeek = true;
-                EndEpisode();
-            }
-        }
-        else
-        {
             // Implement Seeker's logic for searching the environment and deciding actions
             // Update Seeker's position, raycasting, etc.
             MoveAgent(actions);
+            SetFOV();
 
-            if (IsHiderFound())
+            if (IsHiderFound() && seekTimer > 0) // Seeker found Hider before times out
             {
                 // The CustomAgent is within the FOV and not blocked by obstacles
                 float reward = 1f;
-                SetReward(reward);
+                AddReward(reward);
 
                 // Inform the CustomAgent that it has been found
                 hiderTransform.TryGetComponent<HiderAgent>(out HiderAgent agent);
+                endVisualizer.HiderFound();
                 agent.OnFound();
 
                 EndEpisode();
             }
+
+            AddReward(-1f / MaxStep);
+        }
+    }
+
+    private void SetFOV()
+    {
+        Vector3 aimDir = (transform.forward - transform.position).normalized;
+
+        if (fieldOfView != null)
+        {
+            fieldOfView.SetOrigin(transform.position);
+            fieldOfView.SetAimDirection(aimDir);
         }
     }
 
@@ -178,8 +196,7 @@ public class SeekerAgent : Agent
     {
         if (collision.gameObject.TryGetComponent<Wall>(out Wall wall))
         {
-            SetReward(-1f);
-            EndEpisode();
+            AddReward(-1f);
         }
     }
 

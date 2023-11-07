@@ -12,24 +12,18 @@ public class HiderAgent : Agent
     public float turnSpeed = 300; // Speed of agent rotation.
 
     [Header("References")]
+    [SerializeField] private Transform seekerTransform; // Reference to the CustomAgent's transform
     [SerializeField] private HidingSpot hidingSpot; // Reference to the hiding spot
     [SerializeField] private GameObject env; // Reference to the environment
 
     [Header("Hiding Time")]
-    [SerializeField] private float timer; // Time for hiding
-    [SerializeField] private bool runTimer; // Flag to control the timer
-    [SerializeField] private bool hasFoundHidingSpot = false;
+    [SerializeField] private float hidingTime; // Time for hiding
+    private bool hidingTimer; // Flag to control the timer
     private bool isFound = false;// Add this flag to indicate if the HiderAgent is found by the Seeker
     public bool IsFound
     {
         get { return isFound; }
     }
-
-    [Header("End Episode Visualizer")]
-    [SerializeField] private MeshRenderer floorMeshRenderer; // Visualizer for the floor
-    [SerializeField] private Material winMaterial; // Material for winning state
-    [SerializeField] private Material loseMaterial; // Material for losing state
-    [SerializeField] private Material wallCollisionMaterial; // Material for collision with walls
 
     Rigidbody m_AgentRb;
 
@@ -42,8 +36,8 @@ public class HiderAgent : Agent
         m_AgentRb.velocity = Vector3.zero;
         transform.rotation = Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(0, 360)));
 
-        timer = GameManager.instance.hidingTime;
-        runTimer = true;
+        hidingTime = GameManager.instance.hidingTime;
+        hidingTimer = true;
     }
 
     public override void OnEpisodeBegin()
@@ -55,10 +49,10 @@ public class HiderAgent : Agent
         transform.localRotation = Quaternion.Euler(new Vector3(0f, UnityEngine.Random.Range(0, 360)));
 
         // Reset Timer
-        timer = GameManager.instance.hidingTime;
-        runTimer = true;
+        hidingTime = GameManager.instance.hidingTime;
+        hidingTimer = true;
 
-        hasFoundHidingSpot = false;
+        HasFoundHidingSpot = false;
     }
 
     #endregion
@@ -73,9 +67,10 @@ public class HiderAgent : Agent
 
         // Hiding spot's position
         sensor.AddObservation(hidingSpot.transform.position);
+        sensor.AddObservation(HasFoundHidingSpot);
+        sensor.AddObservation(hidingTime);
 
         // Timer value
-        sensor.AddObservation(timer);
         sensor.AddObservation(isFound);
     }
 
@@ -87,11 +82,14 @@ public class HiderAgent : Agent
     public void OnFound()
     {
         isFound = true;
+        SetReward(-2f);
+        EndEpisode();
     }
 
     public void OnNotFound()
     {
         isFound = false;
+        EndEpisode();
     }
 
     // Add this property to track whether the agent has found a hiding spot
@@ -105,9 +103,8 @@ public class HiderAgent : Agent
         {
             if (collider.TryGetComponent<HidingSpot>(out HidingSpot spot))
             {
-                if (spot.CanHide() && timer > 0)
+                if (spot.CanHide() && hidingTime > 0)
                 {
-
                     Vector3 hidingSpotPosition = spot.transform.position;
                     Vector3 agentPosition = transform.position;
 
@@ -122,15 +119,17 @@ public class HiderAgent : Agent
                     m_AgentRb.AddForce(directionToHidingSpot.normalized * moveSpeed, ForceMode.VelocityChange);
 
                     spot.Taken();
-                    hasFoundHidingSpot = true; // Mark that the agent has found a hiding spot
-                    floorMeshRenderer.material = winMaterial;
-                    SetReward(2f);
-                    EndEpisode();
+                    HasFoundHidingSpot = true; // Mark that the agent has found a hiding spot
+                    
+                    seekerTransform.TryGetComponent<SeekerAgent>(out SeekerAgent agent);
+                    agent.CanSeek = true;
+
+                    AddReward(2f);
                 }
             }
             else
             {
-                hasFoundHidingSpot = false;
+                HasFoundHidingSpot = false;
             }
         }
     }
@@ -142,20 +141,20 @@ public class HiderAgent : Agent
     public override void OnActionReceived(ActionBuffers actions)
     {
         // Timer management
-        if (runTimer)
+        if (hidingTimer)
         {
-            timer -= Time.deltaTime;
+            hidingTime -= Time.deltaTime;
 
-            if (timer <= 0)
+            if (hidingTime <= 0 && !HasFoundHidingSpot)
             {
-                runTimer = false;
+                hidingTimer = false;
                 SetReward(-1f);
-                floorMeshRenderer.material = loseMaterial;
-                EndEpisode();
+                seekerTransform.TryGetComponent<SeekerAgent>(out SeekerAgent agent);
+                agent.CanSeek = true;
             }
         }
 
-        if (HasFoundHidingSpot)
+        if (!HasFoundHidingSpot)
         {
             MoveAgent(actions);
         }
@@ -222,9 +221,7 @@ public class HiderAgent : Agent
     {
         if (collision.gameObject.TryGetComponent<Wall>(out Wall wall))
         {
-            SetReward(-1f);
-            floorMeshRenderer.material = wallCollisionMaterial;
-            EndEpisode();
+            AddReward(-1f);
         }
     }
 
